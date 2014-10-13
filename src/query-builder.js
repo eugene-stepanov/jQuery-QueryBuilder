@@ -78,6 +78,7 @@
         onBeforeDeleteRule: null,
         onAfterDeleteGroup: null,
         onAfterDeleteRule: null,
+        onSort: null,
 
         allow_groups: true,
         sortable: false,
@@ -888,6 +889,7 @@
         $.event.props.push('dataTransfer');
 
         var placeholder, src, isHandle = false;
+        var that = this;
 
         this.$el.on('mousedown', '.drag-handle', function(e) {
             isHandle = true;
@@ -970,6 +972,10 @@
 
             src.show();
             placeholder.remove();
+
+            if (that.settings.onSort) {
+                that.settings.onSort.call(that);
+            }
         });
     };
 
@@ -1181,10 +1187,10 @@
         <i class="' + this.settings.icons.remove_group + '"></i> '+ this.lang.delete_group +' \
       </button>' : '') +' \
     </div> \
+    ' + (this.settings.sortable && !main ? '<div class="drag-handle"><i class="' + this.settings.icons.sort + '"></i></div>' : '') + ' \
     <div class="btn-group"> \
       '+ this.getGroupConditions(group_id) +' \
     </div> \
-    '+ (this.settings.sortable && !main ? '<div class="drag-handle"><i class="' + this.settings.icons.sort + '"></i></div>' : '') +' \
   </dt> \
   <dd class=rules-group-body> \
     <ul class=rules-list></ul> \

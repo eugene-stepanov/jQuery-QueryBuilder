@@ -68,9 +68,15 @@
     // DEFAULT CONFIG
     // ===============================
     QueryBuilder.DEFAULTS = {
+        onGetGroup: null,
+        onSetGroup: null,
         onValidationError: null,
         onAfterAddGroup: null,
         onAfterAddRule: null,
+        onBeforeDeleteGroup: null,
+        onBeforeDeleteRule: null,
+        onAfterDeleteGroup: null,
+        onAfterDeleteRule: null,
 
         allow_groups: true,
         sortable: false,
@@ -200,7 +206,15 @@
             var $this = $(this),
                 $rule = $this.closest('.rule-container');
 
+            if (that.settings.onBeforeDeleteRule) {
+                that.settings.onBeforeDeleteRule.call(that, $rule);
+            }
+
             $rule.remove();
+
+            if (that.settings.onAfterDeleteRule) {
+                that.settings.onAfterDeleteRule.call(that, $rule);
+            }
         });
 
         // delete group button
@@ -208,7 +222,15 @@
             var $this = $(this),
                 $group = $this.closest('.rules-group-container');
 
+            if (that.settings.onBeforeDeleteGroup) {
+                that.settings.onBeforeDeleteGroup.call(that, $group);
+            }
+
             that.deleteGroup($group);
+
+            if (that.settings.onAfterDeleteGroup) {
+                that.settings.onAfterDeleteGroup.call(that, $group);
+            }
         });
 
         // INIT
@@ -328,6 +350,10 @@
                 }
             }
 
+            if (that.settings.onGetGroup) {
+                that.settings.onGetGroup.call(that, $group, out);
+            }
+
             if (out.rules.length === 0) {
                 return {};
             }
@@ -433,6 +459,10 @@
                     }
                 }
             });
+
+            if (that.settings.onSetGroup) {
+                that.settings.onSetGroup.call(that, $group, data);
+            }
 
         }(data, $container));
     };
@@ -622,6 +652,12 @@
      * @param filterId {string}
      */
     QueryBuilder.prototype.createRuleInput = function($rule, filterId) {
+        var filter = this.getFilterById(filterId);
+
+        if (filter.onBeforeCreateRuleInput) {
+            filter.onBeforeCreateRuleInput.call(this, $rule, filter);
+        }
+
         var $valueContainer = $rule.find('.rule-value-container').empty();
 
         if (filterId == '-1') {
@@ -634,8 +670,7 @@
             return;
         }
 
-        var filter = this.getFilterById(filterId),
-            $ruleInput = $(this.getRuleInput($rule.attr('id'), filter));
+        var $ruleInput = $(this.getRuleInput($rule.attr('id'), filter));
 
         $valueContainer.append($ruleInput).show();
 

@@ -372,7 +372,7 @@
 
             for (var i=0, l=that.settings.conditions.length; i<l; i++) {
                 var cond = that.settings.conditions[i];
-                $buttons.filter('[value='+ cond +']').prop('checked', data.condition.toUpperCase() == cond.toUpperCase());
+                $buttons.filter('[value="'+ cond +'"]').prop('checked', data.condition.toUpperCase() == cond.toUpperCase());
             }
             $buttons.trigger('change');
 

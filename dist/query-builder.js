@@ -143,7 +143,15 @@
             {type: 'is_not_empty',     accept_values: false, apply_to: ['string']},
             {type: 'is_null',          accept_values: false, apply_to: ['string', 'number', 'datetime']},
             {type: 'is_not_null',      accept_values: false, apply_to: ['string', 'number', 'datetime']}
-        ]
+        ],
+
+        icons: {
+            add_group: 'glyphicon glyphicon-plus-sign',
+            add_rule: 'glyphicon glyphicon-plus',
+            remove_group: 'glyphicon glyphicon-remove',
+            remove_rule: 'glyphicon glyphicon-remove',
+            sort: 'glyphicon glyphicon-sort'
+        }
     };
 
 
@@ -387,7 +395,7 @@
 
             for (var i=0, l=that.settings.conditions.length; i<l; i++) {
                 var cond = that.settings.conditions[i];
-                $buttons.filter('[value='+ cond +']').prop('checked', data.condition.toUpperCase() == cond.toUpperCase());
+                $buttons.filter('[value="'+ cond +'"]').prop('checked', data.condition.toUpperCase() == cond.toUpperCase());
             }
             $buttons.trigger('change');
 
@@ -605,10 +613,10 @@
 
         if ($.fn.selectpicker) {
             $filterSelect.selectpicker({
-              container: 'body',
-              style: 'btn-inverse btn-xs',
-              width: 'auto',
-              showIcon: false
+                container: 'body',
+                style: 'btn-inverse btn-xs',
+                width: 'auto',
+                showIcon: false
             });
         }
 
@@ -851,12 +859,12 @@
     /**
      * Trigger a validation error event with custom params
      */
-    QueryBuilder.prototype.triggerValidationError = function(error, $rule, value, filter, operator) {
-        if (filter.onValidationError) {
-            filter.onValidationError.call(this, $rule, error, value, filter, operator);
+    QueryBuilder.prototype.triggerValidationError = function(error, $target, value, filter, operator) {
+        if (filter && filter.onValidationError) {
+            filter.onValidationError.call(this, $target, error, value, filter, operator);
         }
         if (this.settings.onValidationError) {
-            this.settings.onValidationError.call(this, $rule, error, value, filter, operator);
+            this.settings.onValidationError.call(this, $target, error, value, filter, operator);
         }
 
         var e = jQuery.Event('validationError.queryBuilder', {
@@ -864,7 +872,7 @@
             filter: filter,
             operator: operator,
             value: value,
-            targetRule: $rule[0],
+            targetRule: $target[0],
             builder: this
         });
 
@@ -1115,6 +1123,39 @@
         return out;
     };
 
+    /**
+     * Utility to iterate over radio/checkbox/selection options.
+     * it accept three formats: array of values, map, array of 1-element maps
+     *
+     * @param object|array options
+     * @param callable tpl (takes key and text)
+     */
+    QueryBuilder.prototype.iterateOptions = function(options, tpl) {
+        if (options) {
+            if ($.isArray(options)) {
+                $.each(options, function(index, entry) {
+                    // array of one-element maps
+                    if ($.isPlainObject(entry)) {
+                        $.each(entry, function(key, val) {
+                            tpl(key, val);
+                            return false; // break after first entry
+                        });
+                    }
+                    // array of values
+                    else {
+                        tpl(index, entry);
+                    }
+                });
+            }
+            // unordered map
+            else {
+                $.each(options, function(key, val) {
+                    tpl(key, val);
+                });
+            }
+        }
+    };
+
 
     // TEMPLATES
     // ===============================
@@ -1130,19 +1171,19 @@
   <dt class="rules-group-header"> \
     <div class="btn-group pull-right"> \
       <button type="button" class="btn btn-xs btn-success" data-add="rule"> \
-        <i class="glyphicon glyphicon-plus"></i> '+ this.lang.add_rule +' \
+        <i class="' + this.settings.icons.add_rule + '"></i> '+ this.lang.add_rule +' \
       </button> \
       '+ (this.settings.allow_groups ? '<button type="button" class="btn btn-xs btn-success" data-add="group"> \
-        <i class="glyphicon glyphicon-plus-sign"></i> '+ this.lang.add_group +' \
+        <i class="' + this.settings.icons.add_group + '"></i> '+ this.lang.add_group +' \
       </button>' : '') +' \
       '+ (!main ? '<button type="button" class="btn btn-xs btn-danger" data-delete="group"> \
-        <i class="glyphicon glyphicon-remove"></i> '+ this.lang.delete_group +' \
+        <i class="' + this.settings.icons.remove_group + '"></i> '+ this.lang.delete_group +' \
       </button>' : '') +' \
     </div> \
     <div class="btn-group"> \
       '+ this.getGroupConditions(group_id) +' \
     </div> \
-    '+ (this.settings.sortable && !main ? '<div class="drag-handle"><i class="glyphicon glyphicon-sort"></i></div>' : '') +' \
+    '+ (this.settings.sortable && !main ? '<div class="drag-handle"><i class="' + this.settings.icons.sort + '"></i></div>' : '') +' \
   </dt> \
   <dd class=rules-group-body> \
     <ul class=rules-list></ul> \
@@ -1185,11 +1226,11 @@
   <div class="rule-header"> \
     <div class="btn-group pull-right"> \
       <button type="button" class="btn btn-xs btn-danger" data-delete="rule"> \
-        <i class="glyphicon glyphicon-remove"></i> '+ this.lang.delete_rule +' \
+        <i class="' + this.settings.icons.remove_rule + '"></i> '+ this.lang.delete_rule +' \
       </button> \
     </div> \
   </div> \
-  '+ (this.settings.sortable ? '<div class="drag-handle"><i class="glyphicon glyphicon-sort"></i></div>' : '') +' \
+  '+ (this.settings.sortable ? '<div class="drag-handle"><i class="' + this.settings.icons.sort + '"></i></div>' : '') +' \
   <div class="rule-filter-container"></div> \
   <div class="rule-operator-container"></div> \
   <div class="rule-value-container"></div> \
@@ -1250,25 +1291,23 @@
         switch (filter.input) {
             case 'radio':
                 c = filter.vertical ? ' class=block' : '';
-                $.each(filter.values, function(key, val) {
+                this.iterateOptions(filter.values, function(key, val) {
                     h+= '<label'+ c +'><input type="radio" name="'+ rule_id +'_value" value="'+ key +'"> '+ val +'</label> ';
                 });
                 break;
 
             case 'checkbox':
                 c = filter.vertical ? ' class=block' : '';
-                $.each(filter.values, function(key, val) {
+                this.iterateOptions(filter.values, function(key, val) {
                     h+= '<label'+ c +'><input type="checkbox" name="'+ rule_id +'_value" value="'+ key +'"> '+ val +'</label> ';
                 });
                 break;
 
             case 'select':
                 h+= '<select name="'+ rule_id +'_value"'+ (filter.multiple ? ' multiple' : '') +'>';
-                if (filter.values) {
-                    $.each(filter.values, function(key, val) {
-                        h+= '<option value="'+ key +'"> '+ val +'</option> ';
-                    });
-                }
+                this.iterateOptions(filter.values, function(key, val) {
+                    h+= '<option value="'+ key +'"> '+ val +'</option> ';
+                });
                 h+= '</select>';
                 break;
 
@@ -1451,8 +1490,11 @@
                 var parts = [];
 
                 $.each(data.rules, function(i, rule) {
-                    if (rule.rules && rule.rules.length>0) {
-                        parts.push('('+ nl + parse(rule) + nl +')'+ nl);
+                    if (rule.rules && rule.rules.length > 0) {
+                        if (rule.parts_in == true)
+                            parts.push('PARTS_IN (' + nl + parse(rule) + nl + ')' + nl);
+                        else
+                            parts.push('(' + nl + parse(rule) + nl + ')' + nl);
                     }
                     else {
                         var sql = that.getSqlOperator(rule.operator),
@@ -1498,7 +1540,7 @@
                                 }
                                 else {
                                     if (typeof v === 'string') {
-                                        v = '\''+ v +'\'';
+                                        v = '"'+ v +'"';
                                     }
 
                                     value+= v;
@@ -1510,8 +1552,11 @@
                     }
                 });
 
-                return parts.join(' '+ data.condition + nl);
+                return parts.join(' ' + data.condition + nl);
             }(data));
+
+            if (data.parts_in == true)
+                sql = 'PARTS_IN' + nl + '(' + sql + ')';
 
             if (stmt) {
                 return {

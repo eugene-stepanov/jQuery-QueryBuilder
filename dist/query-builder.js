@@ -1515,46 +1515,61 @@
                             if (!(rule.value instanceof Array)) {
                                 rule.value = [rule.value];
                             }
-                            else if (!sql.list && rule.value.length>1) {
-                                $.error('Operator '+ rule.operator +' cannot accept multiple values');
+                            else if (!sql.list && rule.value.length > 1) {
+                                $.error('Operator ' + rule.operator + ' cannot accept multiple values');
                             }
 
-                            rule.value.forEach(function(v, i) {
-                                if (i>0) {
-                                    value+= ', ';
+                            rule.value.forEach(function(vi, i) {
+                                if (i > 0) {
+                                    value += ', ';
                                 }
 
-                                if (rule.type=='integer' || rule.type=='double') {
-                                    v = changeType(v, rule.type);
-                                }
-                                else if (!stmt) {
-                                    v = escapeString(v);
-                                }
+                                var varr = getListFromCSV(vi);
+                                var subparts = [];
+                                for (var i = 0; i < varr.length; i++) {
+                                    var v = varr[i];
+                                    if (rule.type == 'integer' || rule.type == 'double') {
+                                        v = changeType(v, rule.type);
+                                    }
+                                    else if (rule.type == 'datetime') {
+                                        var dt = new Date(v);
+                                        if (dt != undefined)
+                                            v = dt.toISOString();
+                                    }
+                                    else if (!stmt) {
+                                        v = escapeString(v);
+                                    }
 
-                                v = sql.fn(v);
+                                    v = sql.fn(v);
 
-                                if (stmt) {
-                                    if (stmt == 'question_mark') {
-                                        value+= '?';
+                                    if (stmt) {
+                                        if (stmt == 'question_mark') {
+                                            value += '?';
+                                        }
+                                        else {
+                                            value += '$' + bind_index;
+                                        }
+
+                                        bind_params.push(v);
+                                        bind_index++;
                                     }
                                     else {
-                                        value+= '$'+bind_index;
-                                    }
+                                        if (typeof v === 'string') {
+                                            v = '"' + v + '"';
+                                        }
 
-                                    bind_params.push(v);
-                                    bind_index++;
-                                }
-                                else {
-                                    if (typeof v === 'string') {
-                                        v = '"'+ v +'"';
+                                        subparts.push(rule.field + ' ' + sql.op.replace(/\?/, v));
                                     }
-
-                                    value+= v;
                                 }
+                                var subexpr = subparts.join(' OR' + nl);
+                                if (i > 1)
+                                    subexpr = '(' + subexpr + ')';
+                                parts.push(subexpr);
                             });
                         }
-
-                        parts.push(rule.field +' '+ sql.op.replace(/\?/, value));
+                        else {
+                            parts.push(rule.field + ' ' + sql.op.replace(/\?/, value));
+                        }
                     }
                 });
 
@@ -1648,6 +1663,30 @@
           // uglify compliant
           .replace(/\t/g, '\\t')
           .replace(/\x1a/g, '\\Z');
+    }
+
+    function getListFromCSV(csvData) {
+        var edarr = [];
+        var edstr = csvData;
+        if (edstr == "undefined" || edstr.length == 0)
+            return [];
+        // Replace separating commas so the string can be split
+        var re = new RegExp('(\\,)(?=(?:[^"]|"[^"]*")*$)', "g");
+        edstr = edstr.replace(re, '\\x1F');
+        edarr = edstr.split("\\x1F");
+
+        // This next section might have a more elegant solution. We need to strip off
+        // the enclosing quotes for entries that start and end with quote marks.
+        for (var y = 0, z = edarr.length; y < z; y++) {
+            var r = edarr[y];
+            r = r.trim();
+            var rend = r.length - 1;
+            if (r.slice(0, 1) === '"' && r.slice(-1) === '"')
+                edarr[y] = r.slice(1, -1);
+        }
+        edarr = edarr.map(function(s) { return s.trim(); }); // Remove whitespace from start/end
+
+        return edarr;
     }
 
 }(jQuery));

@@ -17,7 +17,8 @@
             'double',
             'date',
             'time',
-            'datetime'
+            'datetime',
+            'custom'
         ],
         inputs = [
             'text',
@@ -527,6 +528,8 @@
                 case 'date': case 'time': case 'datetime':
                     filter.internalType = 'datetime';
                     break;
+                default: 
+                    filter.internalType = filter.type;
             }
 
             switch (filter.input) {

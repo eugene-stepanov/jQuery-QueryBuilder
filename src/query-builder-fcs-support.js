@@ -6,24 +6,9 @@
 
     $.fn.queryBuilder.defaults.set({
         sqlOperators: {
-            equal:            '= ?',
-            not_equal:        '!= ?',
-            in:               { op: 'IN(?)',     list: true },
-            not_in:           { op: 'NOT IN(?)', list: true },
-            less:             '< ?',
-            less_or_equal:    '<= ?',
-            greater:          '> ?',
-            greater_or_equal: '>= ?',
-            begins_with:      { op: 'LIKE(?)',     fn: function(v){ return v+'%'; } },
-            not_begins_with:  { op: 'NOT LIKE(?)', fn: function(v){ return v+'%'; } },
-            contains:         { op: 'LIKE(?)',     fn: function(v){ return '%'+v+'%'; } },
-            not_contains:     { op: 'NOT LIKE(?)', fn: function(v){ return '%'+v+'%'; } },
-            ends_with:        { op: 'LIKE(?)',     fn: function(v){ return '%'+v; } },
-            not_ends_with:    { op: 'NOT LIKE(?)', fn: function(v){ return '%'+v; } },
-            is_empty:         '== ""',
-            is_not_empty:     '!= ""',
-            is_null:          'IS NULL',
-            is_not_null:      'IS NOT NULL'
+            equal:     '= ?',
+            not_equal: '!= ?',
+            range:     { op: ':[?]', fn: function(v) { return '"' + v.from + '" TO "' + v.to + '"'; } },
         }
     });
 
@@ -104,6 +89,7 @@
                                         v = escapeString(v);
                                     }
 
+                                    var isObj = $.isPlainObject(v);
                                     v = sql.fn(v);
 
                                     if (stmt) {
@@ -118,7 +104,7 @@
                                         bind_index++;
                                     }
                                     else {
-                                        if (typeof v === 'string') {
+                                        if (typeof v === 'string' && !isObj) {
                                             v = '"' + v + '"';
                                         }
 
@@ -230,6 +216,9 @@
     }
 
     function getListFromCSV(csvData) {
+        if ($.isPlainObject(csvData))
+            return [csvData];
+
         var edarr = [];
         var edstr = csvData;
         if (edstr == "undefined" || edstr.length == 0)
